@@ -1,44 +1,44 @@
-from module.system_prompt import SystemPrompt
-from module.messages_manager import Messages
+import sys
+import time
+
+sys.path.append("./")
 from openai import AsyncOpenAI, OpenAI
-import json
+
 from logger import hLogger
-logger = hLogger()
-logger = logger.get_logger()
-a_client = AsyncOpenAI(
-    base_url="https://api.deepseek.com", api_key="sk-2a72bc0a50f64e1eb29fdb05e23fc078"
-)
+from module.messages_manager import Messages
+from module.system_prompt import SystemPrompt, WeightFormat
+
+logger = hLogger.get_logger()
+a_client = AsyncOpenAI(base_url="https://api.deepseek.com", api_key="")
 client = OpenAI(
-    base_url="https://api.deepseek.com", api_key="sk-2a72bc0a50f64e1eb29fdb05e23fc078"
+    base_url="https://aihubmix.com/v1",
+    api_key="",
 )
+
+
 class LLM:
     def __init__(self):
-        
         pass
 
-    def communicate_with_llm(self, messages_type:Messages, user_content):
+    def communicate_with_llm_with_format(self, messages_type: Messages, user_content):
+        start_time = time.time()
         messages_type.add_message("user", user_content)
         messages = messages_type.get_messages()
-        response = client.chat.completions.create(
-            model="deepseek-chat", messages=messages, 
-            response_format={
-            'type': 'json_object'
-            }
+        response = client.beta.chat.completions.parse(
+            model="o3-mini",
+            messages=messages,
+            response_format=WeightFormat,
         )
-
-        try:
-            result = json.loads(response.choices[0].message.content)
-
-        except Exception as e:
-            result = {}
-            logger.info(f"Failed to parse response: {response.choices[0].message.content}")
-            logger.error(f"Failed to parse response: {e}")
-
+        result = response.choices[0].message.parsed
         messages_type.clear_messages()
+
+        end_time = time.time()
+        logger.info(f"大模型响应时间：{end_time - start_time}秒")
 
         return result
 
-    async def communicate_with_llm_stream(self, messages_type:Messages, user_content):
+    async def communicate_with_llm_stream(self, messages_type: Messages, user_content):
+        start_time = time.time()
         messages_type.add_message("user", user_content)
         messages = messages_type.get_messages()
         chunks = await a_client.chat.completions.create(
@@ -49,6 +49,24 @@ class LLM:
         async for chunk in chunks:
             if chunk.choices[0].delta.content:
                 response += chunk.choices[0].delta.content
+                end_time = time.time()
                 yield chunk.choices[0].delta.content
 
+        logger.info(f"大模型流式响应时间：{end_time - start_time}秒")
+
         messages_type.add_message("assistant", response)
+
+
+if __name__ == "__main__":
+    llm = LLM()
+
+    system_prompt = SystemPrompt()
+    weight_messagaes_manager = Messages(
+        system_prompt=system_prompt.weight_agent, max_size=10
+    )
+    result = llm.communicate_with_llm_with_format(
+        Messages(system_prompt=system_prompt.weight_agent),
+        "今天下厨，做个什么",
+    )
+    print(result)
+    print(result.weight)

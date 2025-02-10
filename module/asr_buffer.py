@@ -8,8 +8,12 @@ class ASRBuffer:
             self.buffer.pop(0)
         self.buffer.append(data)
 
-    def clear_before(self, index):
-        self.buffer = self.buffer[index:]
+    def clear(self):
+        self.buffer.clear()
 
     def get_content(self) -> str:
         return "".join(self.buffer)
+
+    async def get_content_stream(self):
+        async for chunk in self.buffer:
+            yield chunk

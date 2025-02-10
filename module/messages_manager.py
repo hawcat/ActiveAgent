@@ -1,8 +1,11 @@
 import base64
+
+
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
-    
+
+
 class Messages:
     def __init__(self, system_prompt, max_size=10):
         self.system_prompt = system_prompt
@@ -16,7 +19,10 @@ class Messages:
         if len(self.messages) >= self.max_size:
             del self.messages[1:3]
         if image:
-            content = [{"type": "text", "text": content}, {"type": "image_url", "image_url": {"url": encode_image(image)}}]
+            content = [
+                {"type": "text", "text": content},
+                {"type": "image_url", "image_url": {"url": encode_image(image)}},
+            ]
         else:
             content = content
 
@@ -24,9 +30,17 @@ class Messages:
 
     def get_messages(self):
         return self.messages
-    
+
     def clear_messages(self):
         self.messages = self.messages[1:]
 
     def set_system_prompt(self, system_prompt):
         self.system_prompt = system_prompt
+
+    def save_messages(self, file_path):
+        with open(file_path, "w") as f:
+            f.write(str(self.messages))
+
+    def parse_messages(self, file_path):
+        with open(file_path, "r") as f:
+            self.messages = eval(f.read())
